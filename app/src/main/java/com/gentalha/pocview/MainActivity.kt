@@ -7,15 +7,22 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.gentalha.pocview.LoginScript.scripts
 import com.gentalha.pocview.databinding.ActivityMainBinding
+import com.gentalha.pocview.ConfigScript.scripts
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private val urlLoginPadrao = "192.168.15.1/padrao"
-    private val urlLogin = "http://192.168.15.1/cgi-bin/login_advance.cgi"
-
+    private val urlLoginPadrao = "192.168.15.1/instalador"
+    private val urlLogin = "http://192.168.15.1/cgi-bin/sophia_index.cgi"
     private lateinit var binding: ActivityMainBinding
+
+    // Define um CoroutineScope para lançar coroutines
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
         binding.webView.apply {
+            show()
             settings.javaScriptEnabled = true
             loadUrl(urlLogin)
             webViewClient = object : WebViewClient() {
@@ -35,10 +43,13 @@ class MainActivity : AppCompatActivity() {
                     println("THG_LOG current url-> $url")
 
                     if (url == urlLogin || url == urlLoginPadrao) {
-                        scripts.forEach { script ->
-                            println("THG_LOG --> $script")
-                            evaluateJavascript(script) { result ->
-                                println("THG_LOG --> $result")
+                        coroutineScope.launch {
+                            scripts.forEach { script ->
+                                println("THG_LOG --> $script")
+                                evaluateJavascript(script.script) { result ->
+                                    println("THG_LOG --> $result")
+                                }
+                                delay(script.delayTime)  // Adicione um atraso de 2 segundos
                             }
                         }
                     } else {
@@ -51,10 +62,13 @@ class MainActivity : AppCompatActivity() {
                         binding.textView.show()
                     }
                 }
-
             }
-
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineScope.cancel()  // Cancela as coroutines quando a atividade é destruída
     }
 }
 
